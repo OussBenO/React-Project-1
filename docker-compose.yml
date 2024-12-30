@@ -1,0 +1,8 @@
+version: '3.8'
+
+services:
+  vite-app:
+    image: oussb9/vite-react-app:latest
+    ports:
+      - "80:80"
+    restart: always
