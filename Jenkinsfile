@@ -1,8 +1,8 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = 'oussb9/vite-react-app:latest'
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
+        DOCKER_IMAGE = 'oussb9/react-project-1:latest'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'  // DockerHub credentials ID
         NODE_VERSION = '18'
         GITHUB_CREDENTIALS_ID = 'github-credentials'  // Replace with your actual GitHub credentials ID in Jenkins
     }
@@ -10,10 +10,10 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 echo 'Checking out the source code from GitHub...'
-                git credentialsId: "${GITHUB_CREDENTIALS_ID}", url: 'https://github.com/your-username/your-repo.git'
+                git credentialsId: "${GITHUB_CREDENTIALS_ID}", url: 'https://github.com/OussBenO/React-Project-1.git'
             }
         }
-        
+
         stage('Install Dependencies') {
             steps {
                 echo 'Installing dependencies...'
@@ -71,14 +71,10 @@ pipeline {
                 script {
                     if (isUnix()) {
                         // For Unix-based agents or WSL
-                        sh """
-                            docker push $DOCKER_IMAGE
-                        """
+                        sh 'docker push $DOCKER_IMAGE'
                     } else {
                         // For Windows agents
-                        bat """
-                            docker push %DOCKER_IMAGE%
-                        """
+                        bat 'docker push %DOCKER_IMAGE%'
                     }
                 }
             }
