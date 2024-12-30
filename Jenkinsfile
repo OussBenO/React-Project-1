@@ -1,71 +1,82 @@
 pipeline {
     agent any
-
     environment {
-        DOCKER_IMAGE = "oussb9/vite-react-app"  // Remplacez par votre dépôt DockerHub
+        DOCKER_IMAGE = 'oussb9/vite-react-app:latest' 
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' 
+        NODE_VERSION = '18' 
     }
-
     stages {
         stage('Checkout Code') {
             steps {
-                echo 'Cloning repository...'
+                echo 'Vérification du code source...'
                 checkout scm
             }
         }
-
         stage('Install Dependencies') {
             steps {
-                echo 'Installing dependencies...'
-                sh 'npm install'
+                echo 'Installation des dépendances...'
+                sh '''
+                    . ~/.nvm/nvm.sh && nvm use ${NODE_VERSION}
+                    npm install
+                '''
             }
         }
-
         stage('Lint Code') {
             steps {
-                echo 'Running ESLint to check code quality...'
-                sh 'npm run lint'
+                echo 'Analyse du code...'
+                sh '''
+                    . ~/.nvm/nvm.sh && nvm use ${NODE_VERSION}
+                    npm run lint
+                '''
             }
         }
-
         stage('Build App') {
             steps {
-                echo 'Building the React app with Vite...'
-                sh 'npm run build'
+                echo 'Construction de l\'application...'
+                sh '''
+                    . ~/.nvm/nvm.sh && nvm use ${NODE_VERSION}
+                    npm run build
+                '''
             }
         }
-
         stage('Build Docker Image') {
             steps {
-                echo 'Building Docker image...'
-                sh "docker build -t $DOCKER_IMAGE:latest ."
+                echo 'Construction de l\'image Docker...'
+                sh '''
+                    docker build -t ${DOCKER_IMAGE} .
+                '''
             }
         }
-
         stage('Push Docker Image to DockerHub') {
             steps {
-                echo 'Pushing Docker image to DockerHub...'
-                withCredentials([string(credentialsId: 'dockerhub-password', variable: 'DOCKER_PASSWORD')]) {
-                    sh "echo $DOCKER_PASSWORD | docker login --username oussb9 --password-stdin"
-                    sh "docker push $DOCKER_IMAGE:latest"
+                echo 'Push de l\'image Docker sur DockerHub...'
+                withDockerRegistry([credentialsId: "${DOCKER_CREDENTIALS_ID}", url: '']) {
+                    sh 'docker push ${DOCKER_IMAGE}'
                 }
             }
         }
-
         stage('Deploy to Remote Server') {
             steps {
-                echo 'Deploying the app to a remote server...'
-                sh 'scp docker-compose.yml user@remote-server:/path/to/deploy'
-                sh 'ssh user@remote-server "docker-compose up -d"'
+                echo 'Déploiement sur le serveur distant...'
+                sshagent(['remote-server-credentials']) {
+                    sh '''
+                        ssh user@remote-server-address << EOF
+                        docker pull ${DOCKER_IMAGE}
+                        docker stop vite-react-app || true
+                        docker rm vite-react-app || true
+                        docker run -d -p 3000:3000 --name vite-react-app ${DOCKER_IMAGE}
+                        EOF
+                    '''
+                }
             }
         }
     }
-
     post {
         success {
-            echo 'Pipeline completed successfully.'
+            echo 'Pipeline exécutée avec succès !'
         }
         failure {
-            echo 'Pipeline failed. Check logs for details.'
+            echo 'Échec de la pipeline.'
         }
     }
 }
