@@ -16,8 +16,16 @@ pipeline {
             steps {
                 echo 'Installation des dépendances...'
                 sh '''
-                    . ~/.nvm/nvm.sh && nvm use ${NODE_VERSION}
+                    # Vérification et installation de NVM si nécessaire
+                    if [ ! -d "$HOME/.nvm" ]; then
+                        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+                    fi
+                    . ~/.nvm/nvm.sh
+                    nvm install ${NODE_VERSION}
+                    nvm use ${NODE_VERSION}
                     npm install
+                    node -v
+                    npm -v
                 '''
             }
         }
@@ -44,6 +52,8 @@ pipeline {
                 echo 'Construction de l\'image Docker...'
                 sh '''
                     docker build -t ${DOCKER_IMAGE} .
+                    docker --version
+                    docker images
                 '''
             }
         }
@@ -60,6 +70,7 @@ pipeline {
                 echo 'Déploiement sur le serveur distant...'
                 sshagent(['remote-server-credentials']) {
                     sh '''
+                        ssh -v user@remote-server-address
                         ssh user@remote-server-address << EOF
                         docker pull ${DOCKER_IMAGE}
                         docker stop vite-react-app || true
