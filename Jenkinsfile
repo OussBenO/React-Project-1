@@ -1,95 +1,58 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE = 'oussb9/react-project-1:latest'
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'  // DockerHub credentials ID
-        NODE_VERSION = '18'
-        GITHUB_CREDENTIALS_ID = 'github-credentials'  // Replace with your actual GitHub credentials ID in Jenkins
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_IMAGE = 'oussb9/vite-react-app'
     }
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                echo 'Checking out the source code from GitHub...'
-                git credentialsId: "${GITHUB_CREDENTIALS_ID}", url: 'https://github.com/OussBenO/React-Project-1.git'
+                // Récupération du code source
+                git branch: 'main', url: 'https://github.com/OussBenO/React-Project-1'
             }
         }
-
-        stage('Install Dependencies') {
+        stage('Build') {
             steps {
-                echo 'Installing dependencies...'
-                script {
-                    if (isUnix()) {
-                        // For Unix-based agents or WSL
-                        sh 'npm install'
-                    } else {
-                        // For Windows agents
-                        bat 'npm install'
-                    }
-                }
+                // Installation des dépendances et build
+                sh 'npm install'
+                sh 'npm run build'
             }
         }
-
-        stage('Build App') {
+        stage('Unit Tests') {
             steps {
-                echo 'Building the application...'
-                script {
-                    if (isUnix()) {
-                        // For Unix-based agents or WSL
-                        sh 'npm run build'
-                    } else {
-                        // For Windows agents
-                        bat 'npm run build'
-                    }
-                }
+                // Exécution des tests unitaires
+                sh 'npm test'
             }
         }
-
-        stage('Build Docker Image') {
+        stage('Docker Build') {
             steps {
-                echo 'Building Docker image...'
-                script {
-                    if (isUnix()) {
-                        // For Unix-based agents or WSL
-                        sh """
-                            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-                            docker build -t $DOCKER_IMAGE .
-                        """
-                    } else {
-                        // For Windows agents
-                        bat """
-                            docker login -u %DOCKER_USERNAME% -p %DOCKER_PASSWORD%
-                            docker build -t %DOCKER_IMAGE% .
-                        """
-                    }
-                }
+                // Construction de l'image Docker
+                sh """
+                    docker build -t $DOCKER_IMAGE:latest .
+                """
             }
         }
-
-        stage('Push Docker Image to DockerHub') {
+        stage('Docker Push') {
             steps {
-                echo 'Pushing Docker image to DockerHub...'
-                script {
-                    if (isUnix()) {
-                        // For Unix-based agents or WSL
-                        sh 'docker push $DOCKER_IMAGE'
-                    } else {
-                        // For Windows agents
-                        bat 'docker push %DOCKER_IMAGE%'
-                    }
-                }
+                // Pousser l'image vers DockerHub
+                sh """
+                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    docker push $DOCKER_IMAGE:latest
+                """
+            }
+        }
+        stage('Deploy to Remote Server') {
+            steps {
+                // Déployer l'image sur un serveur distant
+                echo 'Deploying to remote server...'
+                // Ajouter les étapes spécifiques de déploiement ici
             }
         }
     }
-
     post {
         always {
-            echo 'Pipeline complete.'
-        }
-        success {
-            echo 'Pipeline succeeded.'
-        }
-        failure {
-            echo 'Pipeline failed.'
+            // Clean up Docker images après le build
+            sh 'docker rmi $DOCKER_IMAGE:latest'
         }
     }
 }
