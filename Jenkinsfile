@@ -7,26 +7,26 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                // Récupération du code source
+                // Checkout code from GitHub repository
                 git branch: 'main', url: 'https://github.com/OussBenO/React-Project-1'
             }
         }
         stage('Build') {
             steps {
-                // Installation des dépendances et build
+                // Install dependencies and build the project
                 sh 'npm install'
                 sh 'npm run build'
             }
         }
         stage('Unit Tests') {
             steps {
-                // Exécution des tests unitaires
+                // Run unit tests
                 sh 'npm test'
             }
         }
         stage('Docker Build') {
             steps {
-                // Construction de l'image Docker
+                // Build Docker image
                 sh """
                     docker build -t $DOCKER_IMAGE:latest .
                 """
@@ -34,25 +34,27 @@ pipeline {
         }
         stage('Docker Push') {
             steps {
-                // Pousser l'image vers DockerHub
+                // Push Docker image to DockerHub
                 sh """
-                    echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
+                    echo \$DOCKERHUB_CREDENTIALS_PSW | docker login -u \$DOCKERHUB_CREDENTIALS_USR --password-stdin
                     docker push $DOCKER_IMAGE:latest
                 """
             }
         }
         stage('Deploy to Remote Server') {
             steps {
-                // Déployer l'image sur un serveur distant
+                // Deploy image to remote server
                 echo 'Deploying to remote server...'
-                // Ajouter les étapes spécifiques de déploiement ici
+                // Add specific deployment steps here
             }
         }
     }
     post {
         always {
-            // Clean up Docker images après le build
+            // Cleanup Docker images after the build
             sh 'docker rmi $DOCKER_IMAGE:latest'
+            // Remove dangling images to free up space
+            sh 'docker image prune -f'
         }
     }
 }
